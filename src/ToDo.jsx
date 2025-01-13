@@ -4,6 +4,7 @@ import "./ToDo.css";
 function ToDo() {
   const [task, setTask] = useState("");
   const [tasks, setTasks] = useState([]);
+  const [calculatedRating, setCalculatedRating] = useState(0);
 
   // Load tasks from localStorage
   const loadTasks = () => {
@@ -39,7 +40,9 @@ function ToDo() {
       const newTask = {
         text: task,
         completed: false,
+        wrong: false,
         rating: 0,
+        showOptions: false, // to handle the visibility of the options
       };
       const updatedTasks = [...tasks, newTask];
       setTasks(updatedTasks);
@@ -51,7 +54,20 @@ function ToDo() {
   // Toggle task completion
   const toggleCompletion = (index) => {
     const updatedTasks = tasks.map((t, i) =>
-      i === index ? { ...t, completed: !t.completed } : t
+      i === index
+        ? { ...t, completed: !t.completed, wrong: false } // Uncheck wrong when completed
+        : t
+    );
+    setTasks(updatedTasks);
+    saveTasks(updatedTasks);
+  };
+
+  // Mark task as incorrect
+  const markWrong = (index) => {
+    const updatedTasks = tasks.map((t, i) =>
+      i === index
+        ? { ...t, wrong: !t.wrong, completed: false } // Uncheck completed when marked wrong
+        : t
     );
     setTasks(updatedTasks);
     saveTasks(updatedTasks);
@@ -85,6 +101,22 @@ function ToDo() {
     saveTasks(updatedTasks);
   };
 
+  // Toggle the visibility of Edit and Delete buttons
+  const toggleOptions = (index) => {
+    const updatedTasks = tasks.map((t, i) =>
+      i === index ? { ...t, showOptions: !t.showOptions } : t
+    );
+    setTasks(updatedTasks);
+  };
+
+  // Calculate overall rating
+  const calculateOverallRating = () => {
+    const totalRating = tasks.reduce((acc, task) => acc + task.rating, 0);
+    const ratedTasks = tasks.filter((task) => task.rating > 0).length;
+    const averageRating = ratedTasks > 0 ? totalRating / ratedTasks : 0;
+    setCalculatedRating(averageRating.toFixed(2));
+  };
+
   return (
     <div className="app">
       <h1>To-Do List</h1>
@@ -99,15 +131,29 @@ function ToDo() {
       </div>
       <ul className="task-list">
         {tasks.map((t, index) => (
-          <li key={index} className={`task ${t.completed ? "completed" : ""}`}>
-            <span>{t.text}</span>
+          <li key={index} className="task">
+            <div className="task-text">
+              {t.completed && <span className="correct-symbol">✔</span>}
+              {t.wrong && <span className="wrong-symbol">✘</span>}
+              <span>{t.text}</span>
+            </div>
             <div className="task-actions">
-              <button onClick={() => toggleCompletion(index)}>✔</button>
-              {/* Conditionally render the rating selection */}
+              <input
+                type="checkbox"
+                checked={t.completed}
+                onChange={() => toggleCompletion(index)}
+              />
+              <input
+                type="checkbox"
+                checked={t.wrong}
+                onChange={() => markWrong(index)}
+              />
               {t.completed && (
                 <select
                   value={t.rating}
-                  onChange={(e) => updateRating(index, parseInt(e.target.value))}
+                  onChange={(e) =>
+                    updateRating(index, parseInt(e.target.value))
+                  }
                 >
                   <option value="0">Rate</option>
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -117,12 +163,23 @@ function ToDo() {
                   ))}
                 </select>
               )}
-              <button onClick={() => editTask(index)}>Edit</button>
-              <button onClick={() => deleteTask(index)}>Delete</button>
+              <button onClick={() => toggleOptions(index)}>...</button>
+              {t.showOptions && (
+                <div className="action-buttons">
+                  <button onClick={() => editTask(index)}>Edit</button>
+                  <button onClick={() => deleteTask(index)}>Delete</button>
+                </div>
+              )}
             </div>
           </li>
         ))}
       </ul>
+      <button className="calculate-button" onClick={calculateOverallRating}>
+        Calculate Rating
+      </button>
+      {calculatedRating > 0 && (
+        <div className="calculated-rating">Overall Rating: {calculatedRating}</div>
+      )}
     </div>
   );
 }
